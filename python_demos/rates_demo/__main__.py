@@ -29,6 +29,8 @@ def rates_by_date(rate_date: str) -> Response:
             else:
                 country_symbols = [col for col in rate if col != "Date"]
 
+                # [for col in rate if col != "Date" do col]
+
             country_rates = {
                 country_code: country_rate / rate[base_country]
                 for (country_code, country_rate) in rate.items()
