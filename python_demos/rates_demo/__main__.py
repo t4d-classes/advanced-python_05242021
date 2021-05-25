@@ -1,102 +1,15 @@
 """ main module """
-from concurrent.futures import ThreadPoolExecutor
-from datetime import date
-from requests import request
+
 import time
 
-from rates_demo.business_days import business_days
-
-
-def get_rates() -> None:
-    """ get the rates """
-
-    start_date = date(2021, 1, 1)
-    end_date = date(2021, 3, 31)
-
-    rate_responses: list[str] = []
-
-    for business_day in business_days(start_date, end_date):
-
-        rate_url = "".join([
-            "http://127.0.0.1:5000/api/",
-            str(business_day),
-            "?base=USD&symbols=EUR"])
-
-        response = request("GET", rate_url)
-        rate_responses.append(response.text)
-
-    # for rate_response in rate_responses:
-    #     print(rate_response)
-
-    print(f"num of responses: {len(rate_responses)}")
-
-    print(rate_responses)
-
-
-def get_rate_task(business_day: date) -> None:
-    """ get rate task function """
-
-    rate_url = "".join([
-        "http://127.0.0.1:5000/api/",
-        str(business_day),
-        "?base=USD&symbols=EUR"])    
-
-    response = request("GET", rate_url)
-    return response.text
-
-
-def get_rates_threaded() -> None:
-    """ get the rates """
-
-    start_date = date(2021, 1, 1)
-    end_date = date(2021, 3, 31)
-
-    rate_responses: list[str] = []
-
-    with ThreadPoolExecutor() as executor:
-
-        rate_responses = list(executor.map(
-            get_rate_task,
-            [ business_day for business_day
-            in business_days(start_date, end_date) ]))
-
-    print(f"num of responses: {len(rate_responses)}")
-    print(rate_responses)
-
-# def get_rates_threaded_gen() -> None:
-#     """ get the rates """
-
-#     start_date = date(2021, 1, 1)
-#     end_date = date(2021, 3, 31)
-
-#     rate_responses: list[str] = []
-
-#     with ThreadPoolExecutor() as executor:
-
-#         executor.map(
-#             lambda params: get_rate_task(*params),
-#             ( (business_day, rate_responses) for business_day
-#             in business_days(start_date, end_date) ))
-
-#     print(f"num of responses: {len(rate_responses)}")
-
+from rates_demo.get_rates import get_rates_threaded
+from rates_demo.rates_api_server import rates_api_server
 
 if __name__ == "__main__":
 
-    # start = time.time()
+    with rates_api_server():
 
-    # get_rates()
+        start = time.time()
+        get_rates_threaded()
+        print(f"threaded time elapsed: {time.time() - start}")
 
-    # print(f"original time elapsed: {time.time() - start}")
-
-    start = time.time()
-
-    get_rates_threaded()
-
-    print(f"threaded time elapsed: {time.time() - start}")
-
-    # start = time.time()
-
-    # get_rates_threaded_gen()
-
-    # print(f"threaded time elapsed: {time.time() - start}")
