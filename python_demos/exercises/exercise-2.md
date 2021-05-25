@@ -1,6 +1,6 @@
 # Exercise 2
 
-1. Implement this code in `__main__.py` in the `rates_demo` folder.
+1. Implement this code in `__main__.py` in the `rates_demo` folder. Move the Rates REST API code from day 1 into a new file named `rates_api.py`.
 
 2. Install the "requests" package from PyPi.org.
 
