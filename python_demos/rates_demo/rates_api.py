@@ -1,8 +1,10 @@
 """ main module """
 from typing import Any
+from random import randint
 import pathlib
 import csv
 import math
+import time
 from flask import Flask, jsonify, abort, request, Response
 
 rates: list[dict[str,Any]] = []
@@ -17,6 +19,8 @@ def check() -> str:
 @app.route("/api/<rate_date>")
 def rates_by_date(rate_date: str) -> Response:
     """ rates by date route function """
+
+    time.sleep(randint(1, 5) * 0.05)
 
     for rate in rates:
 
