@@ -8,7 +8,7 @@ https://docs.python-requests.org/en/master/user/quickstart/#make-a-request
 
 3. Using the "requests" package API, call the following URL for each date returned from the "business_days" function. Copy the function from the "date_demos" folder, and utilize in the "rates_demo" folder.
 
-http://localhost:5000/api/2019-01-01?base=USD&symbols=EUR
+http://127.0.0.1:5000/api/2019-01-01?base=USD&symbols=EUR
 
 Iterate over a range of 20 business days, and run the above request for each day.
 
