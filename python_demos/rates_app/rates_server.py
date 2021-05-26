@@ -3,9 +3,10 @@
 from typing import Optional
 import multiprocessing as mp
 import sys
+import socket
 
 
-def rate_server() -> None:
+def rate_server(host: str, port: int) -> None:
     """rate server"""
 
     # implement socket server
@@ -20,8 +21,19 @@ def rate_server() -> None:
     # wire up an echo server which receives a string and echos back to
     # the client the string that is received
 
-    while True:
-        pass
+    with socket.socket(
+        socket.AF_INET, socket.SOCK_STREAM) as socket_server:
+        
+        socket_server.bind( (host, port) )
+        socket_server.listen()
+
+        conn, _ = socket_server.accept()
+
+        conn.sendall(b"Connected to the Rate Server")
+
+        while True:
+            message = conn.recv(2048)
+            conn.sendall(message)    
 
 
 class RateServerError(Exception):
@@ -34,7 +46,8 @@ def command_start_server(server_process: Optional[mp.Process]) -> mp.Process:
     if server_process and server_process.is_alive():
         print("server is already running")
     else:
-        server_process = mp.Process(target=rate_server)
+        server_process = mp.Process(
+            target=rate_server, args=('127.0.0.1', 5000))
         server_process.start()
         print("server started")
 
