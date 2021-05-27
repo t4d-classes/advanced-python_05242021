@@ -31,7 +31,7 @@ def client(host: str, port: int) -> None:
         print("Server connection was closed.")
 
 try:
-    client('127.0.0.1', 5000)
+    client('127.0.0.1', 5050)
 
 except KeyboardInterrupt:
     pass

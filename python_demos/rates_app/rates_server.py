@@ -1,11 +1,22 @@
 """ rate server module """
 
-from typing import Optional
+from typing import Optional, Any
 from multiprocessing.sharedctypes import Synchronized # type: ignore
 import multiprocessing as mp
 import sys
 import socket
 import threading
+import re
+import json
+import requests
+
+CLIENT_COMMAND_PARTS = [
+    r"^(?P<name>[A-Z]*) ",
+    r"(?P<date>[0-9]{4}-[0-9]{2}-[0-9]{2}) ",
+    r"(?P<symbol>[A-Z]{3})$",
+]
+
+CLIENT_COMMAND_REGEX = re.compile("".join(CLIENT_COMMAND_PARTS))
 
 # Add support the following client command
 
@@ -53,10 +64,41 @@ class ClientConnectionThread(threading.Thread):
             data = self.conn.recv(2048)
             if not data:
                 break
-            self.conn.sendall(data)
+
+            client_command_str = data.decode('UTF-8')
+
+            client_command_match = CLIENT_COMMAND_REGEX.match(
+                client_command_str)
+
+            if not client_command_match:
+                self.conn.sendall(b"Invalid Command Format")
+            else:
+                self.process_client_command(client_command_match.groupdict())
         
         with self.client_count.get_lock():
             self.client_count.value -= 1
+
+    def process_client_command(self, client_command: dict[str, Any]) -> None:
+        """ process client command """
+
+        if client_command["name"] == "GET":
+
+            url = "".join([
+                "http://127.0.0.1:5000/api/",
+                client_command["date"],
+                "?base=USD&symbols=",
+                client_command["symbol"],
+            ])
+
+            response = requests.request("GET", url)
+            rate_data = json.loads(response.text)
+
+            self.conn.sendall(
+                str(rate_data["rates"][client_command["symbol"]])
+                .encode("UTF-8"))
+
+        else:
+            self.conn.sendall(b"Unknown Command Name")
 
 
 def rate_server(host: str, port: int, client_count: Synchronized) -> None:
@@ -94,7 +136,7 @@ def command_start_server(
         print("server is already running")
     else:
         server_process = mp.Process(
-            target=rate_server, args=('127.0.0.1', 5000, client_count))
+            target=rate_server, args=('127.0.0.1', 5050, client_count))
         server_process.start()
         print("server started")
 
