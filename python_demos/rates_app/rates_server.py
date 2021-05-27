@@ -9,11 +9,22 @@ import threading
 import re
 import json
 import requests
+import pyodbc
+
+conn_options = [
+    "DRIVER={ODBC Driver 17 for SQL Server}",
+    "SERVER=127.0.0.1,1433",
+    "DATABASE=ratesapp",
+    "UID=sa",
+    "PWD=sqlDbp@ss!",
+]
+
+conn_str = ";".join(conn_options)
 
 # Task 1 - Cache Rate Results
 
 # Upgrade the application to check the database for a given exchange rate
-# (year, currency)
+# (date, currency)
 
 # If the exchange rate was previously retrieved and stored in the
 # database, then return it
@@ -72,19 +83,50 @@ class ClientConnectionThread(threading.Thread):
 
         if client_command["name"] == "GET":
 
-            url = "".join([
-                "http://127.0.0.1:5000/api/",
-                client_command["date"],
-                "?base=USD&symbols=",
-                client_command["symbol"],
-            ])
+            with pyodbc.connect(conn_str) as con:
 
-            response = requests.request("GET", url)
-            rate_data = json.loads(response.text)
+                closing_date = client_command["date"]
+                currency_symbol = client_command["symbol"]
 
-            self.conn.sendall(
-                str(rate_data["rates"][client_command["symbol"]])
-                .encode("UTF-8"))
+                rate_sql = " ".join([
+                    "select exchangerate as exchange_rate from rates",
+                    "where closingdate = ? and currencysymbol = ?"
+                ])
+
+                with con.cursor() as cur:
+
+                    cur.execute(rate_sql, (closing_date, currency_symbol))
+
+                    rate = cur.fetchone()
+
+                    if rate:
+                        self.conn.sendall(
+                            str(rate.exchange_rate).encode('UTF-8'))
+                        return
+
+                url = "".join([
+                    "http://127.0.0.1:5000/api/",
+                    closing_date,
+                    "?base=USD&symbols=",
+                    currency_symbol,
+                ])
+
+                response = requests.request("GET", url)
+                rate_data = json.loads(response.text)
+
+                exchange_rate = rate_data["rates"][client_command["symbol"]]
+
+                insert_rate_sql = " ".join([
+                    "insert into rates",
+                    "(closingdate, currencysymbol, exchangerate)",
+                    "values (?, ?, ?)"
+                ])
+
+                con.execute(insert_rate_sql,
+                    (closing_date, currency_symbol, exchange_rate))
+
+
+                self.conn.sendall(str(exchange_rate).encode("UTF-8"))
 
         else:
             self.conn.sendall(b"Unknown Command Name")
@@ -146,6 +188,7 @@ def command_stop_server(
 
     return server_process
 
+
 def command_server_status(server_process: Optional[mp.Process]) -> None:
     """ output the status of the server """
 
@@ -155,9 +198,19 @@ def command_server_status(server_process: Optional[mp.Process]) -> None:
     else:
         print("server is stopped")
 
+
 def command_client_count(client_count: int) -> None:
     """ output the number of clients connected """
     print(f"{client_count} client(s) connected")
+
+
+def command_clear_cache() -> None:
+    """ command clear cache """
+
+    with pyodbc.connect(conn_str) as con:
+        con.execute("delete from rates")
+
+    print("cache cleared")
 
 
 def command_exit(server_process: Optional[mp.Process]) -> None:
@@ -188,6 +241,8 @@ def main() -> None:
                 command_server_status(server_process)
             elif command == "count":
                 command_client_count(client_count.value)
+            elif command == "clear":
+                command_clear_cache()
             elif command == "exit":
                 command_exit(server_process)
                 break
